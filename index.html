@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StarReply — Réponses automatiques aux avis Google</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0B1628;
+    --navy-light: #132039;
+    --gold: #D4A853;
+    --gold-light: #E8C97A;
+    --gold-dim: rgba(212, 168, 83, 0.15);
+    --white: #F8F6F1;
+    --gray: #A0A8B8;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--navy);
+    color: var(--white);
+    overflow-x: hidden;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Nav */
+  nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 48px;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    background: rgba(11, 22, 40, 0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(212, 168, 83, 0.1);
+  }
+
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px;
+    color: var(--white);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-star {
+    color: var(--gold);
+    font-size: 28px;
+  }
+
+  .nav-cta {
+    background: var(--gold);
+    color: var(--navy);
+    padding: 12px 28px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.3px;
+    transition: all 0.3s ease;
+  }
+
+  .nav-cta:hover {
+    background: var(--gold-light);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(212, 168, 83, 0.25);
+  }
+
+  /* Hero */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 120px 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 800px;
+    background: radial-gradient(circle, rgba(212, 168, 83, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    border: 1px solid rgba(212, 168, 83, 0.3);
+    border-radius: 100px;
+    font-size: 13px;
+    color: var(--gold);
+    margin-bottom: 40px;
+    letter-spacing: 0.5px;
+    animation: fadeDown 0.8s ease both;
+  }
+
+  .badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+    animation: pulse 2s infinite;
+  }
+
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(40px, 6vw, 72px);
+    line-height: 1.1;
+    max-width: 800px;
+    margin-bottom: 28px;
+    font-weight: 400;
+    animation: fadeDown 0.8s ease 0.15s both;
+  }
+
+  .gold { color: var(--gold); }
+
+  .hero-sub {
+    font-size: 18px;
+    color: var(--gray);
+    max-width: 520px;
+    line-height: 1.7;
+    margin-bottom: 48px;
+    animation: fadeDown 0.8s ease 0.3s both;
+  }
+
+  .hero-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--gold);
+    color: var(--navy);
+    padding: 18px 40px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    animation: fadeDown 0.8s ease 0.45s both;
+  }
+
+  .hero-cta:hover {
+    background: var(--gold-light);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(212, 168, 83, 0.3);
+  }
+
+  .hero-cta-arrow {
+    transition: transform 0.3s ease;
+  }
+
+  .hero-cta:hover .hero-cta-arrow {
+    transform: translateX(4px);
+  }
+
+  /* Stats bar */
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 64px;
+    padding: 64px 24px;
+    position: relative;
+    z-index: 1;
+    animation: fadeDown 0.8s ease 0.6s both;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-number {
+    font-family: 'DM Serif Display', serif;
+    font-size: 48px;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+
+  .stat-label {
+    font-size: 14px;
+    color: var(--gray);
+    letter-spacing: 0.5px;
+  }
+
+  /* Section */
+  section {
+    padding: 100px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .section-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gold);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(32px, 4vw, 48px);
+    text-align: center;
+    margin-bottom: 64px;
+    font-weight: 400;
+    line-height: 1.2;
+  }
+
+  /* Problem section */
+  .problem-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  .problem-card {
+    background: var(--navy-light);
+    border: 1px solid rgba(212, 168, 83, 0.08);
+    border-radius: var(--radius);
+    padding: 36px 28px;
+    transition: all 0.3s ease;
+  }
+
+  .problem-card:hover {
+    border-color: rgba(212, 168, 83, 0.2);
+    transform: translateY(-4px);
+  }
+
+  .problem-icon {
+    font-size: 32px;
+    margin-bottom: 20px;
+  }
+
+  .problem-card h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    margin-bottom: 12px;
+    font-weight: 400;
+  }
+
+  .problem-card p {
+    font-size: 14px;
+    color: var(--gray);
+    line-height: 1.7;
+  }
+
+  /* How it works */
+  .steps {
+    max-width: 720px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .step {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    position: relative;
+    padding-bottom: 48px;
+  }
+
+  .step:last-child { padding-bottom: 0; }
+
+  .step-line {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .step-num {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--gold-dim);
+    border: 2px solid var(--gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    color: var(--gold);
+    flex-shrink: 0;
+  }
+
+  .step-connector {
+    width: 2px;
+    flex: 1;
+    background: linear-gradient(to bottom, var(--gold), rgba(212, 168, 83, 0.1));
+    margin-top: 8px;
+  }
+
+  .step:last-child .step-connector { display: none; }
+
+  .step-content h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    margin-bottom: 8px;
+    font-weight: 400;
+    padding-top: 8px;
+  }
+
+  .step-content p {
+    font-size: 15px;
+    color: var(--gray);
+    line-height: 1.7;
+  }
+
+  /* Demo section */
+  .demo {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  .demo-card {
+    background: var(--navy-light);
+    border: 1px solid rgba(212, 168, 83, 0.1);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .demo-header {
+    padding: 20px 28px;
+    border-bottom: 1px solid rgba(212, 168, 83, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--gray);
+  }
+
+  .demo-stars {
+    color: var(--gold);
+    font-size: 16px;
+    letter-spacing: 2px;
+  }
+
+  .demo-body {
+    padding: 28px;
+  }
+
+  .demo-avis {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--gray);
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 24px;
+  }
+
+  .demo-avis-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gray);
+    margin-bottom: 12px;
+  }
+
+  .demo-reponse-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .demo-reponse-label .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+    animation: pulse 2s infinite;
+  }
+
+  .demo-reponse {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--white);
+  }
+
+  .demo-footer {
+    padding: 16px 28px;
+    border-top: 1px solid rgba(212, 168, 83, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: var(--gray);
+  }
+
+  .demo-time {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--gold);
+    font-weight: 600;
+  }
+
+  /* Pricing */
+  .pricing-card {
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--navy-light);
+    border: 2px solid rgba(212, 168, 83, 0.2);
+    border-radius: 16px;
+    padding: 48px 40px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pricing-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light), var(--gold));
+  }
+
+  .pricing-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+
+  .pricing-desc {
+    font-size: 14px;
+    color: var(--gray);
+    margin-bottom: 32px;
+  }
+
+  .pricing-amount {
+    font-family: 'DM Serif Display', serif;
+    font-size: 56px;
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+
+  .pricing-period {
+    font-size: 14px;
+    color: var(--gray);
+    margin-bottom: 36px;
+  }
+
+  .pricing-features {
+    list-style: none;
+    text-align: left;
+    margin-bottom: 36px;
+  }
+
+  .pricing-features li {
+    padding: 12px 0;
+    font-size: 15px;
+    color: var(--white);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .pricing-features li::before {
+    content: '✓';
+    color: var(--gold);
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .pricing-cta {
+    display: block;
+    background: var(--gold);
+    color: var(--navy);
+    padding: 18px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 16px;
+    transition: all 0.3s ease;
+  }
+
+  .pricing-cta:hover {
+    background: var(--gold-light);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(212, 168, 83, 0.3);
+  }
+
+  .pricing-guarantee {
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--gray);
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 48px 24px;
+    border-top: 1px solid rgba(212, 168, 83, 0.08);
+    position: relative;
+    z-index: 1;
+  }
+
+  .footer-logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    margin-bottom: 12px;
+  }
+
+  footer p {
+    font-size: 13px;
+    color: var(--gray);
+  }
+
+  footer a {
+    color: var(--gold);
+    text-decoration: none;
+  }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    nav { padding: 16px 20px; }
+    .stats { flex-direction: column; gap: 32px; }
+    .problem-grid { grid-template-columns: 1fr; }
+    .step { gap: 20px; }
+    .pricing-card { padding: 36px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="logo"><span class="logo-star">★</span> StarReply</a>
+  <a href="#contact" class="nav-cta">Essai gratuit</a>
+</nav>
+
+<section class="hero">
+  <div class="badge"><span class="badge-dot"></span> Automatisation IA pour commerces locaux</div>
+  <h1>Vos avis Google méritent une <span class="gold">réponse parfaite</span></h1>
+  <p class="hero-sub">StarReply répond automatiquement à chaque avis client — positif ou négatif — avec des réponses professionnelles et personnalisées. Zéro effort de votre part.</p>
+  <a href="#contact" class="hero-cta">Essayer gratuitement pendant 14 jours <span class="hero-cta-arrow">→</span></a>
+</section>
+
+<div class="stats">
+  <div class="stat">
+    <div class="stat-number">93%</div>
+    <div class="stat-label">des clients lisent les avis Google<br>avant de choisir un commerce</div>
+  </div>
+  <div class="stat">
+    <div class="stat-number">×2</div>
+    <div class="stat-label">plus de visites quand le gérant<br>répond activement aux avis</div>
+  </div>
+  <div class="stat">
+    <div class="stat-number">24h</div>
+    <div class="stat-label">délai maximum de réponse<br>avec StarReply</div>
+  </div>
+</div>
+
+<section>
+  <div class="section-label">Le problème</div>
+  <h2>Vos avis restent sans réponse.<br>Vos clients le remarquent.</h2>
+  <div class="problem-grid">
+    <div class="problem-card">
+      <div class="problem-icon">⏰</div>
+      <h3>Pas le temps</h3>
+      <p>Entre la gestion quotidienne et les clients, répondre aux avis passe toujours en dernier.</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-icon">😤</div>
+      <h3>Avis négatifs ignorés</h3>
+      <p>Un avis négatif sans réponse fait fuir les futurs clients. 45% des consommateurs évitent un commerce qui ne répond pas.</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-icon">📉</div>
+      <h3>Réputation en danger</h3>
+      <p>Google favorise les fiches actives. Sans réponses régulières, votre visibilité locale diminue.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-label">Comment ça marche</div>
+  <h2>Trois étapes. Zéro effort.</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-line">
+        <div class="step-num">1</div>
+        <div class="step-connector"></div>
+      </div>
+      <div class="step-content">
+        <h3>Un client laisse un avis</h3>
+        <p>Positif ou négatif, notre système détecte chaque nouvel avis dès qu'il apparaît sur votre fiche Google.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-line">
+        <div class="step-num">2</div>
+        <div class="step-connector"></div>
+      </div>
+      <div class="step-content">
+        <h3>Une réponse est générée</h3>
+        <p>Notre IA rédige une réponse personnalisée, professionnelle et chaleureuse — adaptée au ton et au contenu de chaque avis.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-line">
+        <div class="step-num">3</div>
+      </div>
+      <div class="step-content">
+        <h3>La réponse est publiée</h3>
+        <p>La réponse est publiée automatiquement sur votre fiche Google. Vous n'avez rien à faire — jamais.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-label">Démonstration</div>
+  <h2>Voyez la différence</h2>
+  <div class="demo">
+    <div class="demo-card">
+      <div class="demo-header">
+        <div class="demo-stars">★★☆☆☆</div>
+        <span>Avis reçu il y a 3 minutes</span>
+      </div>
+      <div class="demo-body">
+        <div class="demo-avis-label">Avis du client</div>
+        <div class="demo-avis">"Service très lent, on a attendu 45 minutes pour nos plats. Dommage car la nourriture était bonne."</div>
+        <div class="demo-reponse-label"><span class="dot"></span> Réponse StarReply</div>
+        <div class="demo-reponse">Bonjour, nous sommes vraiment désolés d'avoir gâché votre expérience avec ce délai inacceptable. Nous prenons vos remarques très au sérieux et travaillons à améliorer notre organisation. Nous serions ravis de vous accueillir à nouveau pour vous offrir le service de qualité que vous méritez.</div>
+      </div>
+      <div class="demo-footer">
+        <span>Réponse générée automatiquement</span>
+        <div class="demo-time">⚡ En 5 secondes</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="section-label">Tarif</div>
+  <h2>Simple et transparent</h2>
+  <div class="pricing-card">
+    <div class="pricing-name">StarReply Pro</div>
+    <div class="pricing-desc">Tout ce dont vous avez besoin</div>
+    <div class="pricing-amount">150€</div>
+    <div class="pricing-period">par mois · sans engagement</div>
+    <ul class="pricing-features">
+      <li>Réponses automatiques illimitées</li>
+      <li>Avis positifs et négatifs gérés</li>
+      <li>Réponses personnalisées et uniques</li>
+      <li>Publication automatique sur Google</li>
+      <li>Rapport hebdomadaire par email</li>
+      <li>Support prioritaire</li>
+    </ul>
+    <a href="#contact" class="pricing-cta">Commencer l'essai gratuit</a>
+    <div class="pricing-guarantee">14 jours d'essai gratuit · Satisfait ou remboursé</div>
+  </div>
+</section>
+
+<section id="contact">
+  <div class="section-label">Contact</div>
+  <h2>Prêt à automatiser vos réponses ?</h2>
+  <div style="text-align:center;">
+    <p style="font-size:18px;color:var(--gray);max-width:480px;margin:0 auto 32px;line-height:1.7;">Contactez-nous pour activer votre essai gratuit de 14 jours. Aucun engagement, aucun risque.</p>
+    <a href="mailto:ferrer.ethan83@gmail.com" class="hero-cta" style="animation:none;">Nous contacter <span class="hero-cta-arrow">→</span></a>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">★ StarReply</div>
+  <p>© 2026 StarReply · <a href="mailto:ferrer.ethan83@gmail.com">ferrer.ethan83@gmail.com</a></p>
+</footer>
+
+</body>
+</html>
